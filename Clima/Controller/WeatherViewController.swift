@@ -8,7 +8,23 @@
 import UIKit
 import SwiftUI
 
-class WeatherViewController: UIViewController {
+class WeatherViewController: UIViewController, UITextFieldDelegate, WeatherManagerDelegate {
+    
+    func didUpdateWeather(_ weatherManager: WeatherManager, weather: WeatherModel) {
+        DispatchQueue.main.async {
+            self.countLabel.text = weather.temperatureString
+            self.moonImageView.image = UIImage(systemName: weather.conditionName)
+            self.townLabel.text = weather.cityName
+        }
+        
+    }
+    
+    func didFailWithError(error: Error) {
+        print(error)
+    }
+    
+    
+    var weatherManager = WeatherManager()
     
     lazy private var backroundImageView: UIImageView = {
         var image = UIImage(named: "background")!
@@ -19,13 +35,13 @@ class WeatherViewController: UIViewController {
     
     lazy private var townTextField: UITextField = {
         var textField = UITextField()
-        textField.backgroundColor = .gray
-        textField.alpha = 0.4
-        textField.text = "Search"
+        textField.backgroundColor = .gray.withAlphaComponent(0.2)
         textField.translatesAutoresizingMaskIntoConstraints = false
         textField.textAlignment = .right
         textField.textColor = .black
         textField.layer.cornerRadius = 10
+        textField.placeholder = "Search"
+        textField.keyboardType = .alphabet
         
         let paddingView = UIView(frame: CGRectMake(0, 0, 10, 0))
         
@@ -82,7 +98,6 @@ class WeatherViewController: UIViewController {
 
     
     lazy private var moonImageView: UIImageView = {
-        //clound.rain
         let moonImageView = UIImageView(image: UIImage(systemName: "moon"))
         moonImageView.translatesAutoresizingMaskIntoConstraints = false
         moonImageView.tintColor = .black
@@ -100,12 +115,32 @@ class WeatherViewController: UIViewController {
         buttonConfig.background = buttonBack
         
         
-        let button = UIButton(configuration: buttonConfig)
+        let button = UIButton(configuration: buttonConfig, primaryAction: UIAction(){ _ in
+            self.townTextField.endEditing(true)
+        })
         button.tintColor = .black
         button.translatesAutoresizingMaskIntoConstraints = false
         
+        
         return button
     }()
+    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        if let cityName = textField.text {
+            weatherManager.fetchWeather(cityName: cityName)
+        }
+        textField.text = ""
+    }
+    
+    func textFieldShouldEndEditing(_ textField: UITextField) -> Bool {
+        if textField.text != "" {
+            return true
+        }
+        else {
+            textField.placeholder = "Print something ..."
+            return false
+        }
+    }
     
     lazy private var houseButton: UIButton = {
         
@@ -159,9 +194,9 @@ class WeatherViewController: UIViewController {
             celsiusLabel.rightAnchor.constraint(equalTo: moonImageView.rightAnchor),
             celsiusLabel.heightAnchor.constraint(equalToConstant: 100),
             celsiusLabel.widthAnchor.constraint(equalToConstant: 100),
-            countLabel.rightAnchor.constraint(equalTo: celsiusLabel.leftAnchor, constant: 15),
+            countLabel.rightAnchor.constraint(equalTo: celsiusLabel.leftAnchor, constant: -10),
             countLabel.topAnchor.constraint(equalTo: moonImageView.bottomAnchor, constant: 10),
-            countLabel.widthAnchor.constraint(equalToConstant: 100),
+            countLabel.widthAnchor.constraint(equalToConstant: 200),
             countLabel.heightAnchor.constraint(equalToConstant: 100),
             townLabel.topAnchor.constraint(equalTo: countLabel.bottomAnchor, constant: 5),
             townLabel.rightAnchor.constraint(equalTo: celsiusLabel.rightAnchor),
@@ -174,6 +209,9 @@ class WeatherViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        townTextField.delegate = self
+        weatherManager.delegate = self
         
         setupView()
         
